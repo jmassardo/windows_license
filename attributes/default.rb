@@ -1,0 +1,1 @@
+default['windows_license']['product_key'] = nil
