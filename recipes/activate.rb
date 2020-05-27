@@ -1,4 +1,3 @@
-#
 # Cookbook:: windows_license
 # Recipe:: default
 #

@@ -7,6 +7,14 @@ property :product_key,
           validation_message: 'Version must be a xxxxx-xxxxx-xxxxx-xxxxx-xxxxx format String type',
           regex: [/^.{5}[-].{5}[-].{5}[-].{5}[-].{5}/]
 
+property :skms_server,
+          String
+property :skms_port,
+          Integer,
+          default: 1688
+property :skms_domain,
+          String
+
 action :activate do
   if license_status != 'Activated'
     install_product_key unless !new_resource.product_key.nil?
@@ -16,17 +24,49 @@ action :activate do
   end
 end
 
+action :clear do
+  if license_status == 'Activated'
+    clear_product_key
+  else
+    Chef::Log.fatal 'Windows is not activated. Can\'t clear product key'
+  end
+end
+
+action :rearm do
+  if license_status == 'Activated'
+    rearm_product_key
+  else
+    Chef::Log.fatal 'Windows is not activated. Can\'t rearm license'
+  end
+end
+
 action_class do
+  def clear_product_key
+    Chef::Log.info 'Attempting to clear the product key'
+    cmd = shell_out('cscript %windir%\system32\slmgr.vbs /cpky')
+    Chef::Log.fatal 'Error attempting to clear product key' unless cmd.exitstatus == 0
+  end
+
+  def rearm_product_key
+    Chef::Log.info 'Attempting to rearm license'
+    cmd = shell_out('cscript %windir%\system32\slmgr.vbs /rearm')
+    Chef::Log.fatal 'Error attempting to rearm license' unless cmd.exitstatus == 0
+  end
+
   def activate_key
     Chef::Log.info 'Attempting to activate Windows'
-    cmd = shell_out('cscript %windir%\system32\slmgr.vbs -ato')
+    cmd = shell_out("cscript %windir%\\system32\\slmgr.vbs #{slmgr_options}")
     Chef::Log.fatal 'Error during activation' unless cmd.exitstatus == 0
   end
 
-  def install_product_key
-    Chef::Log.info 'Installing Windows Product Key'
-    cmd = shell_out("cscript %windir%\\system32\\slmgr.vbs -ipk #{new_resource.product_key}")
-    Chef::Log.fatal 'Error during key installation' unless cmd.exitstatus == 0
+  def slmgr_options
+    options = ''
+    options += ' /ato'
+    options += " /ipk #{new_resource.product_key}" unless new_resource.product_key.nil?
+    options += " /skms #{new_resource.skms_server}:#{new_resource.skms_port}" unless new_resource.skms_server.nil?
+    options += " /skms-domain #{new_resource.skms_domain}" unless new_resource.skms_domain.nil?
+
+    options
   end
 
   def license_status
