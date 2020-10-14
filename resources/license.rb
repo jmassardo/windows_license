@@ -17,6 +17,7 @@
 #
 
 resource_name :windows_license
+provides :windows_license
 
 default_action :activate
 
